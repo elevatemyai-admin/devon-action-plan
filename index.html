@@ -495,7 +495,7 @@ const TOOLS = [
 // have actually agreed on. Never fabricate a dollar figure — leave null
 // and that stat just won't show, same rule as everywhere else.
 const FINANCIAL_IMPACT = {
-  weeklyHoursReturned: null,  // no agreed number yet — this is a pro-bono test-client phase
+  weeklyHoursReturned: 4,  // honest midpoint of a 3-5 hr/week range — the recurring value of no longer manually deciding/drafting/posting social content each week. Revisit with a real number once it's live.
   monthlyToolCost: null,
   monthlyNetValue: null
 };
@@ -1076,12 +1076,12 @@ function renderIdeas(){
 // ONE-TIME tasks (like a single migration or one-time setup). Leave null
 // for anything ongoing/recurring — that doesn't fit a one-time total.
 const ROADMAP = [
-  { phase: 1, phaseTitle: "Foundation", days: "Once the nurture sequence is live", dayRange: "Early", title: "Segment the existing Kit and old-client lists", aiOrHuman: 'human', hoursSaved: 2,
+  { phase: 1, phaseTitle: "Foundation", days: "Once the nurture sequence is live", dayRange: "Early", title: "Segment the existing Kit and old-client lists", aiOrHuman: 'human', hoursSaved: null,
     youGive: "30 minutes reviewing your Kit list and the ~750 contacts from your acupuncture days", youGetBack: "A cleaned, segmented list so future sends actually reach the right people",
     description: "Your current list mixes old acupuncture contacts, Substack followers, and new quiz-takers with no segmentation.",
     actionItems: ["Review current Kit tags/segments together", "Decide what (if anything) gets re-engaged from the old list", "Set up segments so future sends target the right group"] },
 
-  { phase: 2, phaseTitle: "Launch", days: "After the first funnel is proven", dayRange: "Early", title: "Repurpose call and podcast content into a real posting cadence", aiOrHuman: 'ai', hoursSaved: 3,
+  { phase: 2, phaseTitle: "Launch", days: "After the first funnel is proven", dayRange: "Early", title: "Repurpose call and podcast content into a real posting cadence", aiOrHuman: 'ai', hoursSaved: null,
     youGive: "15 minutes approving a batch of drafts", youGetBack: "A month of ready-to-post content instead of a blank page every day",
     description: "You already have podcast episodes and a backlog of written material — this turns it into a steady, low-effort posting rhythm.",
     actionItems: ["Pull clips/quotes from existing podcast episodes", "Draft a batch of posts in your voice, no on-camera requirement", "Queue for posting over several weeks"] },
