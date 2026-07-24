@@ -753,13 +753,13 @@ function getChapters(){
    since those aren't tasks yet). Persisted per-browser, same pattern as
    everything else on this page.
    ========================================================================= */
-const ASSIGNEES = ['Unassigned', 'Tracy', 'Matt', 'Client']; // EDIT: swap 'Client' for their actual name
+const ASSIGNEES = ['Unassigned', 'Tracy', 'Matt', 'Devon'];
 
 function assigneeColor(name){
   switch(name){
     case 'Tracy': return 'var(--teal)';
     case 'Matt': return 'var(--amber)';
-    case 'Client': return 'var(--navy)';
+    case 'Devon': return 'var(--navy)';
     default: return 'var(--border)';
   }
 }
