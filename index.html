@@ -216,6 +216,17 @@ nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem
 .financial-num{font-family:var(--d);font-size:1.3rem;font-weight:700;color:var(--teal);}
 .financial-label{font-size:10.5px;color:var(--text-muted);margin-top:0.2rem;}
 
+/* TECH STACK — "what you have" vs "what we'd suggest" per category, with
+   a short why. Distinct from Recommended Solutions, which is only for
+   genuinely NEW tools; this is an audit of the current setup. */
+.stack-list{display:flex;flex-direction:column;gap:0.75rem;}
+.stack-card{border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.85rem 1rem;}
+.stack-category{font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:0.5rem;letter-spacing:0.01em;}
+.stack-row{display:flex;justify-content:space-between;gap:1rem;font-size:12px;color:var(--text-muted);padding:0.2rem 0;}
+.stack-row span:last-child{color:var(--text-dark);font-weight:600;text-align:right;}
+.stack-row.suggest span:last-child{color:var(--teal);}
+.stack-why{font-size:11.5px;color:var(--text-muted);margin-top:0.5rem;padding-top:0.5rem;border-top:1px dashed var(--border);line-height:1.5;}
+
 /* WAYS WE CAN HELP — a menu of deeper engagement options, framed as an
    offer of help, not a sales pitch. */
 .ways-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(200px,1fr));gap:0.75rem;margin-top:0.9rem;}
@@ -314,6 +325,16 @@ nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem
         <div class="mini-row-label">Primary Focus</div>
         <div class="mini-row-value" id="execFocusVal"></div>
       </div>
+    </div>
+  </div>
+
+  <div class="mini-card" id="stackCard">
+    <div class="mini-card-top" onclick="toggleMiniCard('stackCard')">
+      <div class="mini-card-title">Your Tech Stack</div>
+      <div class="mini-card-chevron">▲</div>
+    </div>
+    <div class="mini-card-body">
+      <div class="stack-list" id="stackList"></div>
     </div>
   </div>
 
@@ -470,6 +491,21 @@ const EXEC_SUMMARY = {
   outcome: "Someone takes the quiz and automatically gets a short nurture sequence, in your own five-elements language, that leads them into the $47 offer — with no manual follow-up from you.",
   primaryFocus: "Connect the quiz to a real nurture sequence in Kit before any new marketing push."
 };
+
+// TECH_STACK — an audit of what the client already uses, category by
+// category. weSuggest and why are both optional — leave weSuggest blank
+// if the current tool is already the right call (renders as "No change
+// needed"); leave why blank to skip that line entirely. Leave the whole
+// array empty to hide the card.
+const TECH_STACK = [
+  { category: 'Website', youHave: 'Squarespace', weSuggest: '', why: "Already built out with your quiz and the $47 Root Reset — no reason to touch this." },
+  { category: 'Email / CRM', youHave: 'Kit (formerly ConvertKit)', weSuggest: '', why: "This is where the nurture sequence gets built — a great fit for exactly what we're doing first." },
+  { category: 'Newsletter', youHave: 'Substack (a few posts in, ~9-10 subscribers so far)', weSuggest: '', why: "Early days, but it's already outperforming the old on-site blog you mentioned. Worth sticking with while it's working." },
+  { category: 'Design', youHave: 'Canva', weSuggest: '', why: "Fine as-is for pulling together quick visuals when needed." },
+  { category: 'Content source', youHave: 'Podcast (a backlog of episodes, including one on inner-child work)', weSuggest: 'Treat it as your main repurposing source', why: "You've said you enjoy podcasting and don't want to be the on-camera voice for social — this pulls from something you already enjoy making." },
+  { category: 'Social', youHave: 'Instagram, Facebook, Pinterest, LinkedIn (light, inconsistent use)', weSuggest: 'Queue repurposed content instead of posting live', why: "Matches what you told us — social feels like a draining, daily obligation right now. This removes the blank-page problem without asking you to post more." },
+  { category: 'Old contact list', youHave: '~750-800 contacts from your acupuncture practice, unsegmented', weSuggest: 'Segment before reactivating', why: "This list is a real asset, but sending to it cold risks feeling out of place. Segmenting first (Roadmap phase 1) protects the relationship." }
+];
 
 // TOOLS — the "Recommended Solutions" grid. Leave the array empty to hide
 // the whole section. Any of cost/setup/saves can be left out per tool.
@@ -934,6 +970,26 @@ function renderExecSummary(){
   if(card) card.style.display = anyFilled ? 'block' : 'none';
 }
 
+function renderTechStack(){
+  const card = document.getElementById('stackCard');
+  const list = document.getElementById('stackList');
+  if(!TECH_STACK || TECH_STACK.length === 0){
+    if(card) card.style.display = 'none';
+    return;
+  }
+  if(card) card.style.display = 'block';
+  if(list){
+    list.innerHTML = TECH_STACK.map(s => `
+      <div class="stack-card">
+        <div class="stack-category">${s.category}</div>
+        <div class="stack-row"><span>You have</span><span>${s.youHave}</span></div>
+        <div class="stack-row suggest"><span>We suggest</span><span>${s.weSuggest ? s.weSuggest : 'No change needed'}</span></div>
+        ${s.why ? `<div class="stack-why">${s.why}</div>` : ''}
+      </div>
+    `).join('');
+  }
+}
+
 function renderTools(){
   const card = document.getElementById('toolsCard');
   const grid = document.getElementById('toolsGrid');
@@ -1308,6 +1364,7 @@ loadRoadmapNotes();
 applySavedSummaryCollapseState();
 renderSummary();
 renderExecSummary();
+renderTechStack();
 renderTools();
 renderFinancialImpact();
 renderWaysHelp();
