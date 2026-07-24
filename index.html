@@ -488,14 +488,16 @@ const EXEC_SUMMARY = {
 // TOOLS — the "Recommended Solutions" grid. Leave the array empty to hide
 // the whole section. Any of cost/setup/saves can be left out per tool.
 const TOOLS = [
-  { name: 'Kit automation', cost: 'Already included in your plan', setup: '~1-2 hours to build', saves: 'Unblocks a funnel that\'s been stuck for months' }
+  // Nothing new to recommend yet — the first win uses Kit, which Devon
+  // already has. Add real entries here only once there's an actual new
+  // tool/solution being proposed, with a genuine cost and setup story.
 ];
 
 // FINANCIAL_IMPACT — optional. Only fill in numbers you and the client
 // have actually agreed on. Never fabricate a dollar figure — leave null
 // and that stat just won't show, same rule as everywhere else.
 const FINANCIAL_IMPACT = {
-  weeklyHoursReturned: 4,  // honest midpoint of a 3-5 hr/week range — the recurring value of no longer manually deciding/drafting/posting social content each week. Revisit with a real number once it's live.
+  weeklyHoursReturned: null,  // no agreed dollar-based terms yet (pro-bono phase); the recurring-value story already lives in the roadmap step text
   monthlyToolCost: null,
   monthlyNetValue: null
 };
