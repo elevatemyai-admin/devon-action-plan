@@ -145,8 +145,7 @@ nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem
    downloaded, it's just always there. */
 .thought-list{display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem;}
 .thought-item{display:flex;align-items:flex-start;gap:0.6rem;padding:0.6rem 0.7rem;border:1px solid var(--border);border-radius:8px;background:var(--cream);}
-.thought-item.done{opacity:0.55;}
-.thought-item.done .thought-text{text-decoration:line-through;}
+.thought-item.approved{border-color:var(--teal);background:var(--teal-pale);}
 .thought-check{width:18px;height:18px;border-radius:4px;border:2px solid var(--border);flex-shrink:0;margin-top:2px;cursor:pointer;background:var(--white);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;padding:0;}
 .thought-check.checked{background:var(--teal);border-color:var(--teal);}
 .thought-body{flex:1;}
@@ -159,6 +158,10 @@ nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem
 #thoughtMic:hover{background:var(--cream);}
 #thoughtMic.listening{background:var(--teal);border-color:var(--teal);color:#fff;}
 #thoughtAuthor{padding:0.7rem 0.6rem;border:1px solid var(--border);border-radius:8px;font-family:var(--b);font-size:13px;color:var(--text-dark);background:var(--white);}
+.thought-assignee{margin-top:0.4rem;font-size:11.5px;font-weight:600;color:var(--text-muted);padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--white);}
+.thought-queue-banner{display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;background:var(--teal-pale);border:1px solid var(--teal-light);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.6rem;font-size:12.5px;color:#0F6E56;font-weight:600;}
+.thought-queue-banner button{padding:0.4rem 0.8rem;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.thought-queue-banner button:hover{filter:brightness(1.1);}
 
 /* FUTURE IDEAS — visually distinct from active steps: no checkbox, no
    progress tracking, just something to open and read when curious. */
@@ -467,6 +470,7 @@ nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem
       <button id="thoughtMic" type="button" title="Tap to talk instead of typing" style="display:none;">🎤</button>
       <button id="thoughtAdd">Add</button>
     </div>
+    <div id="thoughtQueueBanner"></div>
     <div id="thoughtList" class="thought-list"></div>
     <div class="privacy-note">
       Dropped thoughts are visible live to your whole advisor team — unlike "Talk it through"
@@ -1588,23 +1592,60 @@ document.getElementById('chatEmail').addEventListener('click', () => {
    ========================================================================= */
 let thoughts = [];
 
+function thoughtAssigneeOptionsHtml(current){
+  return ASSIGNEES.filter(a => a !== 'Unassigned').map(a =>
+    `<option value="${a}" ${current === a ? 'selected' : ''}>${a}</option>`
+  ).join('');
+}
+
 function renderThoughts(){
   const list = document.getElementById('thoughtList');
+  const banner = document.getElementById('thoughtQueueBanner');
   if(!list) return;
+
+  const approvedCount = thoughts.filter(t => t.approved).length;
+  if(banner){
+    banner.innerHTML = approvedCount > 0 ? `
+      <span>${approvedCount} approved and waiting to be built into the real plan —</span>
+      <button onclick="copyThoughtQueue()" id="thoughtQueueCopyBtn">Copy queue to paste to Claude</button>
+    ` : '';
+  }
+
   if(!thoughts.length){
     list.innerHTML = '<div class="thought-empty">Nothing dropped yet.</div>';
     return;
   }
   list.innerHTML = thoughts.map(t => `
-    <div class="thought-item ${t.done ? 'done' : ''}">
-      <button class="thought-check ${t.done ? 'checked' : ''}" onclick="toggleThought('${t.id}')">${t.done ? '✓' : ''}</button>
+    <div class="thought-item ${t.approved ? 'approved' : ''}">
+      <button class="thought-check ${t.approved ? 'checked' : ''}" onclick="toggleThought('${t.id}')" title="Mark approved — ready to build into the plan">${t.approved ? '✓' : ''}</button>
       <div class="thought-body">
         <div class="thought-text">${escapeHtml(t.text)}</div>
         <div class="thought-meta">Logged by ${escapeHtml(t.author)} · ${new Date(t.createdAt).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
+        <select class="thought-assignee" onchange="setThoughtAssignee('${t.id}', this.value)">
+          ${thoughtAssigneeOptionsHtml(t.assignee)}
+        </select>
       </div>
       <button class="thought-remove" onclick="removeThought('${t.id}')" title="Remove">✕</button>
     </div>
   `).join('');
+}
+
+async function copyThoughtQueue(){
+  const approved = thoughts.filter(t => t.approved);
+  if(!approved.length) return;
+  const text = `Approved thoughts from ${CLIENT.clientName}'s action-plan page — ready to build into the real plan:\n\n` +
+    approved.map(t => `- [${t.assignee || 'Unassigned'}] ${t.text} (logged by ${t.author}, ${new Date(t.createdAt).toLocaleDateString(undefined, {month:'short', day:'numeric'})})`).join('\n');
+  try{
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById('thoughtQueueCopyBtn');
+    if(btn){
+      const original = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }
+  }catch(e){
+    alert('Could not copy automatically — you can still select and copy the approved items manually.');
+  }
 }
 
 async function loadThoughts(){
@@ -1644,17 +1685,32 @@ async function addThought(){
 async function toggleThought(id){
   const t = thoughts.find(x => x.id === id);
   if(!t) return;
-  t.done = !t.done;
+  t.approved = !t.approved;
   renderThoughts();
   try{
     const res = await fetch('/api/thoughts', {
       method: 'PATCH',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ id, done: t.done })
+      body: JSON.stringify({ id, approved: t.approved })
     });
     const data = await res.json();
     thoughts = data.thoughts || thoughts;
     renderThoughts();
+  }catch(e){ /* leave optimistic state */ }
+}
+
+async function setThoughtAssignee(id, assignee){
+  const t = thoughts.find(x => x.id === id);
+  if(!t) return;
+  t.assignee = assignee;
+  try{
+    const res = await fetch('/api/thoughts', {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id, assignee })
+    });
+    const data = await res.json();
+    thoughts = data.thoughts || thoughts;
   }catch(e){ /* leave optimistic state */ }
 }
 
