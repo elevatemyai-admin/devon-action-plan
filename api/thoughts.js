@@ -55,18 +55,22 @@ export default async function handler(req, res) {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         text: text.trim(),
         author: author || 'Client',
+        assignee: author || 'Client',
         createdAt: new Date().toISOString(),
-        done: false
+        approved: false
       });
       await saveThoughts(thoughts);
       return res.status(200).json({ thoughts });
     }
 
     if (req.method === 'PATCH') {
-      const { id, done } = req.body || {};
+      const { id, approved, assignee } = req.body || {};
       const thoughts = await getThoughts();
       const idx = thoughts.findIndex((t) => t.id === id);
-      if (idx >= 0) thoughts[idx].done = !!done;
+      if (idx >= 0) {
+        if (typeof approved === 'boolean') thoughts[idx].approved = approved;
+        if (typeof assignee === 'string') thoughts[idx].assignee = assignee;
+      }
       await saveThoughts(thoughts);
       return res.status(200).json({ thoughts });
     }
