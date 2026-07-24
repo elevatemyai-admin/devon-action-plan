@@ -75,6 +75,20 @@ nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem
 .value-chip{display:flex;align-items:center;gap:0.4rem;font-size:11.5px;font-weight:600;padding:0.3rem 0.65rem;border-radius:7px;line-height:1.3;}
 .value-give{background:var(--cream-dark);color:var(--text-muted);}
 .value-get{background:var(--teal-pale);color:#0F6E56;}
+
+/* TIME COMPARE — "Now" vs "With AI assist" bars, replacing a plain
+   "you get back" chip whenever a step has real before/after hour
+   estimates. Purely illustrative per-step — does NOT feed the Quick
+   Summary hours-saved rollup (that still reads hoursSaved only, per the
+   one-time-vs-recurring rule already in place). */
+.time-compare{margin:0.5rem 0 0.6rem;width:100%;flex-basis:100%;}
+.time-row{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-muted);margin-bottom:0.2rem;}
+.time-row.ai{color:#0F6E56;font-weight:700;}
+.time-track{height:7px;background:var(--cream-dark);border-radius:4px;overflow:hidden;margin-bottom:0.55rem;}
+.time-track:last-of-type{margin-bottom:0;}
+.time-fill{height:100%;border-radius:4px;}
+.time-fill.now{background:var(--sand);opacity:0.55;}
+.time-fill.ai{background:var(--teal);}
 .step-toggle-icon{color:var(--sand);font-size:0.7rem;margin-top:4px;transition:transform 0.2s;}
 .step.expanded .step-toggle-icon{transform:rotate(180deg);}
 
@@ -567,6 +581,8 @@ const PLAN = [
     youGive: "One round of review and approval on the drafts",
     youGetBack: "A finished nurture sequence — the piece you've been stuck on for months",
     hoursSaved: 4,
+    timeNow: 4.5,
+    timeWithAI: 0.5,
     description: "A short automated email sequence that runs after someone takes the quiz, written in your five-elements language, leading into the $47 Root Reset.",
     whyItMatters: "The quiz and the $47 offer already exist — this is the one missing piece connecting them, and the reason people currently land with 'nowhere to go.'",
     actionItems: [
@@ -582,6 +598,8 @@ const PLAN = [
     youGive: "30 minutes to test the live flow together",
     youGetBack: "A funnel that runs on its own — no manual follow-up needed",
     hoursSaved: 2,
+    timeNow: 2.5,
+    timeWithAI: 0.5,
     description: "Wire the quiz so a completed result automatically triggers the right Kit sequence — no manual email-sending on your end.",
     whyItMatters: "This is what turns \"I built a quiz\" into an actual working system, without adding anything new to your plate.",
     actionItems: [
@@ -597,6 +615,8 @@ const PLAN = [
     youGive: "One quick approval pass",
     youGetBack: "Weeks of content without having to sit down and write from a blank page",
     hoursSaved: 3,
+    timeNow: 3.25,
+    timeWithAI: 0.25,
     description: "You answered nearly every question on our first call in a way that's already quotable — we'll pull those moments directly rather than writing new content from scratch.",
     whyItMatters: "You told us social media is the thing you avoid most because you don't enjoy 'putting your face to things.' This sidesteps that entirely — your own words, repurposed.",
     actionItems: [
@@ -1120,12 +1140,12 @@ function renderIdeas(){
 // ONE-TIME tasks (like a single migration or one-time setup). Leave null
 // for anything ongoing/recurring — that doesn't fit a one-time total.
 const ROADMAP = [
-  { phase: 1, phaseTitle: "Foundation", days: "Once the nurture sequence is live", dayRange: "Early", title: "Segment the existing Kit and old-client lists", aiOrHuman: 'human', hoursSaved: null,
+  { phase: 1, phaseTitle: "Foundation", days: "Once the nurture sequence is live", dayRange: "Early", title: "Segment the existing Kit and old-client lists", aiOrHuman: 'human', hoursSaved: null, timeNow: 3, timeWithAI: 0.5,
     youGive: "30 minutes reviewing your Kit list and the ~750 contacts from your acupuncture days", youGetBack: "A cleaned, segmented list so future sends actually reach the right people",
     description: "Your current list mixes old acupuncture contacts, Substack followers, and new quiz-takers with no segmentation.",
     actionItems: ["Review current Kit tags/segments together", "Decide what (if anything) gets re-engaged from the old list", "Set up segments so future sends target the right group"] },
 
-  { phase: 2, phaseTitle: "Launch", days: "After the first funnel is proven", dayRange: "Early", title: "Repurpose call and podcast content into a real posting cadence", aiOrHuman: 'ai', hoursSaved: null,
+  { phase: 2, phaseTitle: "Launch", days: "After the first funnel is proven", dayRange: "Early", title: "Repurpose call and podcast content into a real posting cadence", aiOrHuman: 'ai', hoursSaved: null, timeNow: 3, timeWithAI: 0.25,
     youGive: "15 minutes approving a batch of drafts", youGetBack: "A month of ready-to-post content instead of a blank page every day",
     description: "You already have podcast episodes and a backlog of written material — this turns it into a steady, low-effort posting rhythm.",
     actionItems: ["Pull clips/quotes from existing podcast episodes", "Draft a batch of posts in your voice, no on-camera requirement", "Queue for posting over several weeks"] },
@@ -1208,10 +1228,10 @@ function renderRoadmap(){
             <span class="tag ${step.aiOrHuman === 'ai' ? 'tag-ai' : 'tag-human'}">${step.aiOrHuman === 'ai' ? 'AI-assisted' : 'Human-led'}</span>
             ${assigneeSelectHtml(roadmapStepAssignee[i], `setRoadmapAssignee(${i}, this.value)`)}
           </div>
-          ${step.youGive || step.youGetBack ? `
+          ${step.youGive || step.youGetBack || typeof step.timeNow === 'number' ? `
           <div class="value-trade">
             ${step.youGive ? `<span class="value-chip value-give">⏱ You give: ${step.youGive}</span>` : ''}
-            ${step.youGetBack ? `<span class="value-chip value-get">🎁 You get back: ${step.youGetBack}</span>` : ''}
+            ${timeCompareHtml(step) || (step.youGetBack ? `<span class="value-chip value-get">🎁 You get back: ${step.youGetBack}</span>` : '')}
           </div>` : ''}
           <div class="step-desc">${step.description}</div>
         </div>
@@ -1284,6 +1304,22 @@ function toggleSub(i, ai){
 }
 function toggleExpand(i){ stepExpanded[i] = !stepExpanded[i]; render(); }
 
+// Builds the "Now" vs "With AI assist" bar comparison for a step, when
+// real timeNow/timeWithAI hour estimates exist. Returns '' otherwise, so
+// callers can fall back to the plain "you get back" chip.
+function timeCompareHtml(step){
+  if(typeof step.timeNow !== 'number' || typeof step.timeWithAI !== 'number' || step.timeNow <= 0) return '';
+  const aiPct = Math.max(4, Math.min(100, (step.timeWithAI / step.timeNow) * 100));
+  const fmt = (n) => (n % 1 === 0 ? n : n.toFixed(1));
+  return `
+  <div class="time-compare">
+    <div class="time-row"><span>Now</span><span>${fmt(step.timeNow)} hrs</span></div>
+    <div class="time-track"><div class="time-fill now" style="width:100%;"></div></div>
+    <div class="time-row ai"><span>With AI assist</span><span>${fmt(step.timeWithAI)} hrs</span></div>
+    <div class="time-track"><div class="time-fill ai" style="width:${aiPct}%;"></div></div>
+  </div>`;
+}
+
 function stepCardHtml(step, i){
   return `
     <div class="step ${progress[i] ? 'done' : ''} ${stepExpanded[i] ? 'expanded' : ''}" id="step-${i}">
@@ -1297,10 +1333,10 @@ function stepCardHtml(step, i){
             </span>
             ${assigneeSelectHtml(stepAssignee[i], `setAssignee(${i}, this.value)`)}
           </div>
-          ${step.youGive || step.youGetBack ? `
+          ${step.youGive || step.youGetBack || typeof step.timeNow === 'number' ? `
           <div class="value-trade">
             ${step.youGive ? `<span class="value-chip value-give">⏱ You give: ${step.youGive}</span>` : ''}
-            ${step.youGetBack ? `<span class="value-chip value-get">🎁 You get back: ${step.youGetBack}</span>` : ''}
+            ${timeCompareHtml(step) || (step.youGetBack ? `<span class="value-chip value-get">🎁 You get back: ${step.youGetBack}</span>` : '')}
           </div>` : ''}
           <div class="step-desc">${step.description}</div>
         </div>
