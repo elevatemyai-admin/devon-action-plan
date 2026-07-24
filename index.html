@@ -139,6 +139,27 @@ nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem
 .chat-actions button:hover{background:var(--cream);}
 .privacy-note{margin-top:0.9rem;padding-top:0.9rem;border-top:1px solid var(--border);font-size:11px;color:var(--sand);line-height:1.6;}
 
+/* DROP A THOUGHT — shared, cross-device quick-capture list. Backed by
+   Upstash Redis via api/thoughts.js, same pattern as the Elevation Room.
+   Live and visible to anyone who loads this page — nothing is emailed or
+   downloaded, it's just always there. */
+.thought-list{display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem;}
+.thought-item{display:flex;align-items:flex-start;gap:0.6rem;padding:0.6rem 0.7rem;border:1px solid var(--border);border-radius:8px;background:var(--cream);}
+.thought-item.done{opacity:0.55;}
+.thought-item.done .thought-text{text-decoration:line-through;}
+.thought-check{width:18px;height:18px;border-radius:4px;border:2px solid var(--border);flex-shrink:0;margin-top:2px;cursor:pointer;background:var(--white);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;padding:0;}
+.thought-check.checked{background:var(--teal);border-color:var(--teal);}
+.thought-body{flex:1;}
+.thought-text{font-size:13.5px;color:var(--text-dark);line-height:1.4;}
+.thought-meta{font-size:10.5px;color:var(--sand);margin-top:0.2rem;}
+.thought-remove{background:transparent;border:none;color:var(--sand);cursor:pointer;font-size:14px;padding:0.1rem 0.3rem;flex-shrink:0;}
+.thought-remove:hover{color:var(--text-dark);}
+.thought-empty{font-size:12.5px;color:var(--text-muted);font-style:italic;padding:0.4rem 0;}
+#thoughtMic{padding:0.7rem 0.9rem;background:var(--white);border:1px solid var(--border);color:var(--navy);font-size:16px;}
+#thoughtMic:hover{background:var(--cream);}
+#thoughtMic.listening{background:var(--teal);border-color:var(--teal);color:#fff;}
+#thoughtAuthor{padding:0.7rem 0.6rem;border:1px solid var(--border);border-radius:8px;font-family:var(--b);font-size:13px;color:var(--text-dark);background:var(--white);}
+
 /* FUTURE IDEAS — visually distinct from active steps: no checkbox, no
    progress tracking, just something to open and read when curious. */
 .future-heading{margin:2.5rem 0 0.5rem;}
@@ -431,6 +452,25 @@ nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem
       usable content — nothing more. It's not used to train AI models, sold, or shared outside
       this project. What's typed is saved in this browser only; it doesn't sync to our team
       automatically — use "Email this to your advisor" any time you want us to actually see it.
+    </div>
+  </div>
+
+  <div class="chat-card">
+    <div class="chat-title">Drop a thought</div>
+    <div class="chat-sub">
+      For anything that doesn't have a home yet — type it or talk it out. It's visible to your
+      advisor team the moment you add it, so nothing gets lost or forgotten between check-ins.
+    </div>
+    <div class="chat-input-row">
+      <select id="thoughtAuthor"></select>
+      <input id="thoughtInput" type="text" placeholder="Type it, or hit the mic and talk it out..." />
+      <button id="thoughtMic" type="button" title="Tap to talk instead of typing" style="display:none;">🎤</button>
+      <button id="thoughtAdd">Add</button>
+    </div>
+    <div id="thoughtList" class="thought-list"></div>
+    <div class="privacy-note">
+      Dropped thoughts are visible live to your whole advisor team — unlike "Talk it through"
+      above, this one isn't private to your browser.
     </div>
   </div>
 
@@ -1539,6 +1579,146 @@ document.getElementById('chatEmail').addEventListener('click', () => {
   const body = encodeURIComponent(text);
   window.location.href = `mailto:${ADVISOR_EMAIL}?subject=${subject}&body=${body}`;
 });
+
+/* =========================================================================
+   DROP A THOUGHT — shared, cross-device quick-capture list. Backed by
+   Upstash Redis via api/thoughts.js (same pattern as the Elevation Room).
+   Live and visible to anyone who loads this page — nothing is emailed or
+   downloaded, it's just always there.
+   ========================================================================= */
+let thoughts = [];
+
+function renderThoughts(){
+  const list = document.getElementById('thoughtList');
+  if(!list) return;
+  if(!thoughts.length){
+    list.innerHTML = '<div class="thought-empty">Nothing dropped yet.</div>';
+    return;
+  }
+  list.innerHTML = thoughts.map(t => `
+    <div class="thought-item ${t.done ? 'done' : ''}">
+      <button class="thought-check ${t.done ? 'checked' : ''}" onclick="toggleThought('${t.id}')">${t.done ? '✓' : ''}</button>
+      <div class="thought-body">
+        <div class="thought-text">${escapeHtml(t.text)}</div>
+        <div class="thought-meta">Logged by ${escapeHtml(t.author)} · ${new Date(t.createdAt).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
+      </div>
+      <button class="thought-remove" onclick="removeThought('${t.id}')" title="Remove">✕</button>
+    </div>
+  `).join('');
+}
+
+async function loadThoughts(){
+  try{
+    const res = await fetch('/api/thoughts');
+    const data = await res.json();
+    thoughts = data.thoughts || [];
+  }catch(e){
+    thoughts = [];
+  }
+  renderThoughts();
+}
+
+async function addThought(){
+  const input = document.getElementById('thoughtInput');
+  const authorSelect = document.getElementById('thoughtAuthor');
+  const text = input.value.trim();
+  if(!text) return;
+  const addBtn = document.getElementById('thoughtAdd');
+  addBtn.disabled = true;
+  try{
+    const res = await fetch('/api/thoughts', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ text, author: authorSelect.value })
+    });
+    const data = await res.json();
+    thoughts = data.thoughts || thoughts;
+    input.value = '';
+    renderThoughts();
+  }catch(e){
+    alert('Could not save that — check your connection and try again.');
+  }
+  addBtn.disabled = false;
+}
+
+async function toggleThought(id){
+  const t = thoughts.find(x => x.id === id);
+  if(!t) return;
+  t.done = !t.done;
+  renderThoughts();
+  try{
+    const res = await fetch('/api/thoughts', {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id, done: t.done })
+    });
+    const data = await res.json();
+    thoughts = data.thoughts || thoughts;
+    renderThoughts();
+  }catch(e){ /* leave optimistic state */ }
+}
+
+async function removeThought(id){
+  thoughts = thoughts.filter(t => t.id !== id);
+  renderThoughts();
+  try{
+    const res = await fetch('/api/thoughts', {
+      method: 'DELETE',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id })
+    });
+    const data = await res.json();
+    thoughts = data.thoughts || thoughts;
+    renderThoughts();
+  }catch(e){ /* leave optimistic state */ }
+}
+
+document.getElementById('thoughtAuthor').innerHTML =
+  ASSIGNEES.filter(a => a !== 'Unassigned').map(a => `<option value="${a}">${a}</option>`).join('');
+document.getElementById('thoughtAdd').addEventListener('click', addThought);
+document.getElementById('thoughtInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') addThought(); });
+loadThoughts();
+
+(function(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micBtn = document.getElementById('thoughtMic');
+  if(!SpeechRecognition || !micBtn) return;
+
+  micBtn.style.display = 'inline-flex';
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  let listening = false;
+
+  micBtn.addEventListener('click', () => {
+    if(listening) return;
+    listening = true;
+    micBtn.classList.add('listening');
+    micBtn.textContent = '●';
+    try{ recognition.start(); }catch(e){ /* already running, ignore */ }
+  });
+
+  recognition.addEventListener('result', (e) => {
+    const transcript = e.results[0][0].transcript;
+    const input = document.getElementById('thoughtInput');
+    input.value = input.value ? (input.value.trim() + ' ' + transcript) : transcript;
+    input.focus();
+  });
+
+  recognition.addEventListener('end', () => {
+    listening = false;
+    micBtn.classList.remove('listening');
+    micBtn.textContent = '🎤';
+  });
+
+  recognition.addEventListener('error', () => {
+    listening = false;
+    micBtn.classList.remove('listening');
+    micBtn.textContent = '🎤';
+  });
+})();
 </script>
 </body>
 </html>
